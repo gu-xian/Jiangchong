@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文降重工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading {
+            display: none;
+        }
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">论文降重工具</h1>
+        
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="original">
+                    原文
+                </label>
+                <textarea id="original" rows="10" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="请输入需要降重的文本"></textarea>
+            </div>
+            
+            <div class="flex justify-center mb-4">
+                <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    开始降重
+                </button>
+            </div>
+            
+            <div class="loading text-center mb-4">
+                <p class="text-gray-600">处理中...</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="result">
+                    降重结果
+                </label>
+                <textarea id="result" rows="10" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('process').addEventListener('click', async () => {
+            const originalText = document.getElementById('original').value;
+            const loading = document.querySelector('.loading');
+            const resultArea = document.getElementById('result');
+            
+            if (!originalText.trim()) {
+                alert('请输入需要降重的文本');
+                return;
+            }
+            
+            loading.classList.add('active');
+            resultArea.value = '';
+            
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: originalText })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    resultArea.value = data.result;
+                } else {
+                    alert(data.error || '处理失败，请重试');
+                }
+            } catch (error) {
+                alert('发生错误，请重试');
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html> 
