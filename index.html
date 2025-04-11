@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文优化工具</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading {
+            display: none;
+        }
+        .loading.active {
+            display: block;
+        }
+        .tab {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background-color: #3B82F6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-4">论文优化工具</h1>
+        <p class="text-center text-gray-600 mb-8">一键降重或优化AI生成内容</p>
+        
+        <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <!-- 模式切换按钮 -->
+            <div class="flex mb-6 border rounded overflow-hidden">
+                <div id="tab-reduce-weight" class="tab active py-2 px-4 flex-1 text-center font-medium">
+                    论文降重
+                </div>
+                <div id="tab-reduce-aigc" class="tab py-2 px-4 flex-1 text-center font-medium">
+                    降低AI痕迹
+                </div>
+            </div>
+
+            <!-- 模式说明 -->
+            <div id="mode-description" class="mb-4 p-3 bg-blue-50 rounded text-sm text-gray-700">
+                <p id="desc-reduce-weight" class="block">
+                    <strong>论文降重模式：</strong>通过同义词替换等方法降低文本重复率，帮助你通过查重系统。
+                </p>
+                <p id="desc-reduce-aigc" class="hidden">
+                    <strong>降低AI痕迹模式：</strong>调整AI生成的内容，使其更符合人类自然表达，减少AI特征。
+                </p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="original">
+                    原文
+                </label>
+                <textarea id="original" rows="10" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    placeholder="请输入需要处理的文本"></textarea>
+            </div>
+            
+            <div class="flex justify-center mb-4">
+                <button id="process" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    开始处理
+                </button>
+            </div>
+            
+            <div class="loading text-center mb-4">
+                <p class="text-gray-600">处理中...</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="result">
+                    处理结果
+                </label>
+                <textarea id="result" rows="10" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    readonly></textarea>
+            </div>
+
+            <div class="text-center">
+                <button id="copy-result" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline text-sm">
+                    复制结果
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            <p>本工具仅供学习参考，请勿用于不当用途</p>
+        </div>
+    </div>
+
+    <script>
+        // 当前模式
+        let currentMode = 'reduce_weight'; // 默认为降重模式
+        
+        // 切换标签页
+        document.getElementById('tab-reduce-weight').addEventListener('click', () => {
+            switchMode('reduce_weight');
+        });
+        
+        document.getElementById('tab-reduce-aigc').addEventListener('click', () => {
+            switchMode('reduce_aigc');
+        });
+        
+        // 切换模式函数
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // 更新标签页状态
+            document.getElementById('tab-reduce-weight').classList.toggle('active', mode === 'reduce_weight');
+            document.getElementById('tab-reduce-aigc').classList.toggle('active', mode === 'reduce_aigc');
+            
+            // 更新描述文本显示
+            document.getElementById('desc-reduce-weight').classList.toggle('hidden', mode !== 'reduce_weight');
+            document.getElementById('desc-reduce-weight').classList.toggle('block', mode === 'reduce_weight');
+            document.getElementById('desc-reduce-aigc').classList.toggle('hidden', mode !== 'reduce_aigc');
+            document.getElementById('desc-reduce-aigc').classList.toggle('block', mode === 'reduce_aigc');
+            
+            // 清空结果
+            document.getElementById('result').value = '';
+        }
+        
+        // 处理按钮点击事件
+        document.getElementById('process').addEventListener('click', async () => {
+            const originalText = document.getElementById('original').value;
+            const loading = document.querySelector('.loading');
+            const resultArea = document.getElementById('result');
+            
+            if (!originalText.trim()) {
+                alert('请输入需要处理的文本');
+                return;
+            }
+            
+            loading.classList.add('active');
+            resultArea.value = '';
+            
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        text: originalText,
+                        mode: currentMode
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    resultArea.value = data.result;
+                } else {
+                    alert(data.error || '处理失败，请重试');
+                }
+            } catch (error) {
+                alert('发生错误，请重试');
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+        
+        // 复制结果按钮
+        document.getElementById('copy-result').addEventListener('click', () => {
+            const resultText = document.getElementById('result').value;
+            if (resultText) {
+                navigator.clipboard.writeText(resultText)
+                    .then(() => {
+                        alert('结果已复制到剪贴板');
+                    })
+                    .catch(() => {
+                        alert('复制失败，请手动复制');
+                    });
+            }
+        });
+    </script>
+</body>
+</html> 
