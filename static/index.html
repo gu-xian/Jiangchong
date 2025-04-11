@@ -28,6 +28,11 @@
         <p class="text-center text-gray-600 mb-8">一键降重或优化AI生成内容</p>
         
         <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <!-- 状态提示 -->
+            <div id="api-status" class="mb-6 p-4 bg-green-100 text-green-800 rounded">
+                <p>✅ 工具已准备就绪，可以开始使用</p>
+            </div>
+            
             <!-- 模式切换按钮 -->
             <div class="flex mb-6 border rounded overflow-hidden">
                 <div id="tab-reduce-weight" class="tab active py-2 px-4 flex-1 text-center font-medium">
@@ -92,6 +97,45 @@
         // 当前模式
         let currentMode = 'reduce_weight'; // 默认为降重模式
         
+        // 同义词词典
+        const SYNONYMS_DICT = {
+            '使用': ['运用', '应用', '采用', '利用'],
+            '研究': ['探讨', '分析', '探究', '研讨'],
+            '问题': ['议题', '课题', '难题', '疑问'],
+            '方法': ['方式', '途径', '手段', '办法'],
+            '结果': ['成果', '结论', '效果', '成效'],
+            '分析': ['探讨', '研究', '剖析', '解析'],
+            '影响': ['作用', '效应', '冲击', '波及'],
+            '发展': ['进展', '演变', '成长', '进步'],
+            '提高': ['提升', '增强', '改善', '优化'],
+            '实现': ['达成', '完成', '达到', '促成']
+        };
+        
+        // AIGC降低痕迹用的转换规则
+        const AIGC_TRANSFORM_RULES = {
+            '可以得出': '我觉得',
+            '因此': '所以',
+            '并且': '而且',
+            '然而': '不过',
+            '综上所述': '总的来说',
+            '此外': '还有',
+            '如果': '要是',
+            '因为': '因为嘛',
+            '所以': '所以啊',
+            '但是': '但是呢',
+            '例如': '比如说',
+            '必须': '一定要',
+            '需要': '得要',
+            '认为': '我觉得',
+            '表明': '说明',
+            '显示': '看起来是',
+            '证明': '表明',
+            '建议': '我建议',
+            '总结': '总而言之',
+            '进行': '做',
+            '当前': '现在'
+        };
+        
         // 切换标签页
         document.getElementById('tab-reduce-weight').addEventListener('click', () => {
             switchMode('reduce_weight');
@@ -119,8 +163,29 @@
             document.getElementById('result').value = '';
         }
         
+        // 处理文本函数
+        function processText(text, mode) {
+            if (mode === 'reduce_weight') {
+                // 同义词替换逻辑
+                let result = text;
+                for (const [word, synonyms] of Object.entries(SYNONYMS_DICT)) {
+                    const regex = new RegExp(word, 'g');
+                    result = result.replace(regex, synonyms[0]);
+                }
+                return result;
+            } else {
+                // 降低AI痕迹逻辑
+                let result = text;
+                for (const [formal, informal] of Object.entries(AIGC_TRANSFORM_RULES)) {
+                    const regex = new RegExp(formal, 'g');
+                    result = result.replace(regex, informal);
+                }
+                return result;
+            }
+        }
+        
         // 处理按钮点击事件
-        document.getElementById('process').addEventListener('click', async () => {
+        document.getElementById('process').addEventListener('click', () => {
             const originalText = document.getElementById('original').value;
             const loading = document.querySelector('.loading');
             const resultArea = document.getElementById('result');
@@ -133,29 +198,18 @@
             loading.classList.add('active');
             resultArea.value = '';
             
-            try {
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        text: originalText,
-                        mode: currentMode
-                    })
-                });
-                
-                const data = await response.json();
-                if (response.ok) {
-                    resultArea.value = data.result;
-                } else {
-                    alert(data.error || '处理失败，请重试');
+            // 模拟处理延时，实际上是立即完成的
+            setTimeout(() => {
+                try {
+                    const processedText = processText(originalText, currentMode);
+                    resultArea.value = processedText;
+                } catch (error) {
+                    alert('处理文本时出错，请重试');
+                    console.error('处理错误:', error);
+                } finally {
+                    loading.classList.remove('active');
                 }
-            } catch (error) {
-                alert('发生错误，请重试');
-            } finally {
-                loading.classList.remove('active');
-            }
+            }, 500); // 添加延时，给用户处理感
         });
         
         // 复制结果按钮

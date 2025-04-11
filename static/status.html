@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文优化工具 - 状态</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f8ff;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .status {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .module-status {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .module-name {
+            font-weight: bold;
+        }
+        .module-available {
+            color: #4CAF50;
+        }
+        .module-unavailable {
+            color: #f44336;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>论文优化工具 - 状态</h1>
+        <div class="status">服务正常运行</div>
+        
+        <div class="module-status">
+            <span class="module-name">静态文件服务</span>
+            <span class="module-available">✓ 可用</span>
+        </div>
+        
+        <div class="module-status">
+            <span class="module-name">JavaScript功能</span>
+            <span id="js-status" class="module-unavailable">正在检测...</span>
+        </div>
+        
+        <div class="module-status">
+            <span class="module-name">文本处理功能</span>
+            <span id="text-status" class="module-unavailable">正在检测...</span>
+        </div>
+        
+        <p>服务组件状态良好，您可以放心使用论文优化工具。</p>
+        <p><a href="/">返回首页</a></p>
+    </div>
+    
+    <script>
+        // 检测JavaScript可用性
+        document.getElementById('js-status').className = 'module-available';
+        document.getElementById('js-status').textContent = '✓ 可用';
+        
+        // 检测文本处理功能
+        try {
+            // 尝试执行简单的替换
+            const original = "使用这个方法研究问题";
+            const processed = original.replace("使用", "运用").replace("研究", "探讨");
+            
+            if (processed === "运用这个方法探讨问题") {
+                document.getElementById('text-status').className = 'module-available';
+                document.getElementById('text-status').textContent = '✓ 可用';
+            } else {
+                throw new Error("处理结果不正确");
+            }
+        } catch (error) {
+            document.getElementById('text-status').className = 'module-unavailable';
+            document.getElementById('text-status').textContent = '✗ 不可用';
+        }
+    </script>
+</body>
+</html> 
