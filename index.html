@@ -20,6 +20,46 @@
             background-color: #3B82F6;
             color: white;
         }
+        .word-count {
+            font-size: 12px;
+            margin-top: 5px;
+            color: #6B7280;
+        }
+        .word-count.warning {
+            color: #F59E0B;
+        }
+        .word-count.error {
+            color: #EF4444;
+        }
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .upload-btn-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3B82F6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -47,14 +87,31 @@
                     <strong>降低AI痕迹模式：</strong>调整AI生成的内容，使其更符合人类自然表达，减少AI特征。
                 </p>
             </div>
+
+            <!-- Word导入按钮 -->
+            <div class="mb-4 flex">
+                <div class="upload-btn-wrapper mr-2">
+                    <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded text-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        导入Word文档
+                    </button>
+                    <input type="file" id="word-upload" accept=".docx,.doc" />
+                </div>
+                <div class="text-xs text-gray-500 self-center">
+                    支持.docx格式
+                </div>
+            </div>
             
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="original">
-                    原文
+                    原文 <span class="text-xs text-gray-500">(限1000字)</span>
                 </label>
                 <textarea id="original" rows="10" 
                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="请输入需要处理的文本"></textarea>
+                <div id="word-count" class="word-count">当前字数：0/1000</div>
             </div>
             
             <div class="flex justify-center mb-4">
@@ -64,7 +121,10 @@
             </div>
             
             <div class="loading text-center mb-4">
-                <p class="text-gray-600">处理中...</p>
+                <div class="flex justify-center items-center">
+                    <div class="loader"></div>
+                    <p class="text-gray-600">处理中，请耐心等待...</p>
+                </div>
             </div>
             
             <div class="mb-4">
@@ -76,9 +136,12 @@
                     readonly></textarea>
             </div>
 
-            <div class="text-center">
+            <div class="text-center flex justify-center space-x-3">
                 <button id="copy-result" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline text-sm">
                     复制结果
+                </button>
+                <button id="export-word" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline text-sm">
+                    导出为Word
                 </button>
             </div>
         </div>
@@ -87,6 +150,11 @@
             <p>本工具仅供学习参考，请勿用于不当用途</p>
         </div>
     </div>
+
+    <!-- 引入docx.js用于Word文档处理 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.5/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.1/pizzip.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <script>
         // 当前模式
@@ -118,6 +186,101 @@
             // 清空结果
             document.getElementById('result').value = '';
         }
+        
+        // 字数统计功能
+        const originalTextarea = document.getElementById('original');
+        const wordCountElement = document.getElementById('word-count');
+        const MAX_CHARS = 1000;
+        
+        originalTextarea.addEventListener('input', updateWordCount);
+        
+        function updateWordCount() {
+            const text = originalTextarea.value;
+            const count = text.length;
+            
+            wordCountElement.textContent = `当前字数：${count}/${MAX_CHARS}`;
+            
+            if (count > MAX_CHARS) {
+                wordCountElement.className = 'word-count error';
+                originalTextarea.value = text.substring(0, MAX_CHARS);
+                updateWordCount();
+            } else if (count > MAX_CHARS * 0.9) {
+                wordCountElement.className = 'word-count warning';
+            } else {
+                wordCountElement.className = 'word-count';
+            }
+        }
+        
+        // Word导入功能
+        document.getElementById('word-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    const zip = new PizZip(content);
+                    const doc = new docxtemplater().loadZip(zip);
+                    const text = doc.getFullText();
+                    
+                    // 将提取的文本填入原文文本框
+                    originalTextarea.value = text.substring(0, MAX_CHARS);
+                    updateWordCount();
+                    
+                    alert('Word文档导入成功！');
+                } catch (error) {
+                    console.error('Word导入错误:', error);
+                    alert('Word文档导入失败，请检查文件格式。');
+                }
+            };
+            reader.readAsBinaryString(file);
+        });
+        
+        // 导出Word功能
+        document.getElementById('export-word').addEventListener('click', function() {
+            const resultText = document.getElementById('result').value;
+            if (!resultText) {
+                alert('没有可导出的内容');
+                return;
+            }
+            
+            // 创建一个包含文本的文档
+            const docx = new docxtemplater();
+            const zip = new PizZip();
+            
+            // 添加基本文档结构
+            zip.file("word/document.xml", 
+                `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                    <w:body>
+                        <w:p>
+                            <w:r>
+                                <w:t>${resultText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</w:t>
+                            </w:r>
+                        </w:p>
+                    </w:body>
+                </w:document>`);
+            
+            // 添加其他必要的文件结构
+            zip.file("[Content_Types].xml", 
+                `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                    <Default Extension="xml" ContentType="application/xml"/>
+                    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+                </Types>`);
+            
+            zip.file("_rels/.rels", 
+                `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+                </Relationships>`);
+            
+            // 生成并下载文件
+            const blob = zip.generate({type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+            saveAs(blob, "论文优化结果.docx");
+        });
         
         // 处理按钮点击事件
         document.getElementById('process').addEventListener('click', async () => {
